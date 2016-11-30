@@ -1,6 +1,7 @@
 [package]
 name = "crust8"
 version = "0.1.0"
-authors = ["root"]
+authors = ["SwapnilBhosale"]
+email = "sswapnil.1993@gmail.com"
 
 [dependencies]
