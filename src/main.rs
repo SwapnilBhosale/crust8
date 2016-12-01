@@ -15,7 +15,7 @@ fn main() {
     let rom = read_bin(rom_file_name);
     let mut chip = Chip::default();
     println!("{:#?}",&chip);
-    chip.start_cpu();
+    chip.start_cpu(rom);
     println!(" pc value : {}",&chip.cpu.reg_pc);
     print_ram_location(chip);
     
@@ -29,7 +29,7 @@ fn read_bin<P:AsRef<Path>>(path:P)-> Vec<u8> {
 }
 
 fn print_ram_location(chip : chip::Chip){
-    for i in (0..80){
+    for i in (512..600){
         println!("{}",chip.memory[i]);
     }
 }
