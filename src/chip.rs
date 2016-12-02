@@ -1,19 +1,25 @@
-const MEMORY_SIZE : usize = 4 * 1024;
-const DEF_PC_LOC : usize = 0x200;
 use std::fmt;
 use std::fmt::Debug;
 use cpu::Cpu;
 
+const MEMORY_SIZE : usize = 4 * 1024;
+const GRAPHICS_SIZE : usize = 64*32;
+const DEF_PC_LOC : usize = 0x200;
+
+
+
 pub struct Chip{
     pub memory : [u8;MEMORY_SIZE] ,
-    pub cpu : Cpu
+    pub cpu : Cpu,
+    pub gfx : [u8;GRAPHICS_SIZE] 
 }
 
 impl Default for Chip {
     fn default() -> Chip{
         Chip{
             memory : [0;MEMORY_SIZE],
-            cpu : Cpu::default()
+            cpu : Cpu::default(),
+            gfx : [0;GRAPHICS_SIZE]
         }
     }
 }
@@ -77,7 +83,7 @@ impl Chip{
             0x00E0 => {
                 is_draw_needed = true;
                 for i in(0..2048){
-                    self.cpu.gfx[i]=0;
+                    self.gfx[i]=0;
                 }
             }
         }
