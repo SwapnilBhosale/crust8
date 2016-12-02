@@ -25,7 +25,7 @@ impl Default for Chip {
 }
 
 impl Chip{
-    pub fn start_cpu(&mut self,program : Vec<u8>){
+    pub fn start_cpu(&mut self,program : &Vec<u8>){
         let char_set = [
             0xF0,0x90,0x90,0x90,0xF0,
             0x20,0x60,0x20,0x20,0x70,
@@ -49,9 +49,9 @@ impl Chip{
             self.memory[i] = char_set[i];
         }
 
-        self.cpu.reg_pc = DEF_PC_LOC as u16;
+        self.cpu.reg_pc = DEF_PC_LOC ;
         let mut i = 512;
-        for b in &program{
+        for b in program.iter(){
             self.memory[i] = *b;
             i += 1;
         }
@@ -59,34 +59,143 @@ impl Chip{
 
     pub fn run(&mut self){
         let mut is_draw_needed = false;
-        let window: PistonWindow = WindowSettings::new("crust8", [640, 320]) .exit_on_esc(true).into();
-        let black = [0.0, 0.0, 0.0, 1.0];
-        let red = [1.0, 0.0, 0.0, 1.0];
-        for e in window {
-            if let Some(r) = e.render_args() {
-                e.draw_2d(|c, g| {
-                    loop{
-                        is_draw_needed = self.execute();
-                        self.cpu.reg_pc += 2; 
-                    }
-                });
-            }
-        }
+        // Change this to OpenGL::V2_1 if not working.
+        
+        // Create an Glutin window.
+        
     }
 
     pub fn execute(&mut self) -> bool {
         let mut is_draw_needed = false;
         let mut opcode = 0;
+        println!(" {:x} {:x} {:x}",self.cpu.reg_pc,self.memory[self.cpu.reg_pc],self.memory[self.cpu.reg_pc + 1]);
         opcode = ((self.memory[self.cpu.reg_pc] as u16) << 8) | self.memory[self.cpu.reg_pc + 1] as u16;
-        println!("Opcode : {}",opcode);
-        match opcode{
-            0x00E0 => {
-                is_draw_needed = true;
-                for i in(0..2048){
-                    self.gfx[i]=0;
+        println!("Opcode : {:x}",opcode);
+        match opcode & 0xF000 {
+            0x0000 => {
+                match opcode & 0x00FF {
+                    0x00EE => {
+                        self.cpu.reg_sp -= 1;
+                        self.cpu.reg_pc = self.cpu.stack[self.cpu.reg_sp as usize] as usize; 
+                        self.cpu.reg_pc += 2;
+                    },
+                     _ => {panic!("invalid instructiion in 0x0000- {}", opcode);}
                 }
             }
+            0x1000 => {
+                println!("jumping to address {:x}", opcode & 0x0FFF);
+                self.cpu.reg_pc = (opcode & 0x0FFF) as usize;
+            }, 
+            0x2000 => {
+                self.cpu.stack[self.cpu.reg_sp as usize] = self.cpu.reg_pc as u16;
+                self.cpu.reg_sp += 1;
+                self.cpu.reg_pc = (opcode & 0x0FFF) as usize;
+            },
+            0x3000 => {
+                let reg_val = self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize];
+                let nn_val = (opcode & 0x00FF) as u8;
+                if reg_val == nn_val {
+                    self.cpu.reg_pc += 4;
+                }else{
+                    self.cpu.reg_pc += 2;
+                }
+            },
+            0x5000 => {
+                if self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize] == self.cpu.reg_gpr[((opcode & 0x00F0) >> 4) as usize] {
+                    self.cpu.reg_pc += 4;
+                }else {
+                   self.cpu.reg_pc += 2; 
+                }
+            },
+            0x6000 => {
+                self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize] = (opcode & 0x00FF) as u8; 
+                self.cpu.reg_pc += 2;
+            },
+            0x7000 => {
+                self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize] += (opcode & 0x00FF) as u8;
+                self.cpu.reg_pc += 2;
+            },
+            0x8000 => {
+                match opcode & 0x000F {
+                    0x0000 => {
+                        self.cpu.reg_gpr[((opcode & 0x0F00) >> 8 ) as usize] = self.cpu.reg_gpr[((opcode & 0x00F0)>>4) as usize];
+                        self.cpu.reg_pc += 2;
+                    },
+                     _ => {panic!("invalid instructiion in 0x8000- {}", opcode);} 
+                }
+            },
+            0xA000 => {
+                self.cpu.reg_I = opcode & 0x0FFF;
+                self.cpu.reg_pc += 2;
+            },
+            0xD000 => {
+                let x = self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize] as u32;
+                let y = self.cpu.reg_gpr[((opcode & 0x00F0) >> 4) as usize] as u32;
+
+                //println!("{:x}{:x}",x,y);
+                let n = (opcode & 0x000F) as u32;
+                self.cpu.reg_gpr[0x0F] = 0;
+                let mut pixel = 0;
+                for yline in (0..n as u32){
+                    pixel = self.memory[(self.cpu.reg_I+yline as u16) as usize];
+                    for xline in (0..8 as u32){
+                        if (pixel & (0x80 >> xline)) != 0{
+                            //println!("x - {}, xline - {}, y = {}, yline - {}", x, xline,  y, yline);
+                            
+                            if self.gfx[(x + xline + ((y+yline)*64)) as usize] == 1{
+                                self.cpu.reg_gpr[0x0F] = 1;
+                            }
+                            self.gfx[(x + xline + ((y+yline)*64)) as usize] ^= 1;
+                        }
+                    }
+                }
+                
+                is_draw_needed = true;
+                self.cpu.reg_pc += 2;
+
+            },
+            0xE000 => {
+                match opcode & 0x00FF {
+                    0x00A1 => {
+                       if self.cpu.keys[self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize] as usize] == 0 {
+                           self.cpu.reg_pc += 4;
+                       }else{
+                           self.cpu.reg_pc += 2;
+                       }
+                    },
+                    _ => {panic!("invalid instructiion in 0xE000 - {}", opcode);} 
+                }
+            },
+            0xF000 => {
+                match opcode & 0x00FF {
+                    0x0007 => {
+                        self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize] = self.cpu.reg_dt; 
+                        self.cpu.reg_pc += 2; 
+                    },
+                    0x0015 => {
+                        self.cpu.reg_dt = self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize];
+                        self.cpu.reg_pc += 2;
+                    },
+                    0x001E => {
+                        self.cpu.reg_I += self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize] as u16;
+                        self.cpu.reg_pc += 2;
+                    },
+                    0x0065 => {
+                        for i in (0..((opcode & 0x0F00) >> 8) +1 ){
+                            self.cpu.reg_gpr[i as usize] = self.memory[(self.cpu.reg_I + i) as usize];
+                        }
+                        self.cpu.reg_I += ((opcode & 0x0F00) >> 8) + 1; 
+                        self.cpu.reg_pc += 2;
+                    },
+                     _ => {panic!("invalid instructiion in 0xF000 - {}", opcode);} 
+                }
+            },
+            _ => {panic!("invalid instructiion - {:x}", opcode);}
         }
+        if self.cpu.reg_dt > 0{
+            self.cpu.reg_dt -= 1;
+        }
+        is_draw_needed
     }
 }
 
