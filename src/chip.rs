@@ -1,6 +1,8 @@
 use std::fmt;
 use std::fmt::Debug;
 use cpu::Cpu;
+use rand::*;
+use rand::Rng;
 
 const MEMORY_SIZE : usize = 4 * 1024;
 const GRAPHICS_SIZE : usize = 64*32;
@@ -73,8 +75,15 @@ impl Chip{
         println!("Opcode : {:x}",opcode);
         match opcode & 0xF000 {
             0x0000 => {
-                match opcode & 0x00FF {
-                    0x00EE => {
+                match opcode & 0x000F {
+                    0x0000 => {
+                        for i in(0..GRAPHICS_SIZE){
+                            self.gfx[i]=0;
+                        }
+                        self.cpu.reg_pc += 2;
+                        is_draw_needed = true;
+                    }
+                    0x000E => {
                         self.cpu.reg_sp -= 1;
                         self.cpu.reg_pc = self.cpu.stack[self.cpu.reg_sp as usize] as usize; 
                         self.cpu.reg_pc += 2;
@@ -100,6 +109,13 @@ impl Chip{
                     self.cpu.reg_pc += 2;
                 }
             },
+            0x4000 => {
+                if self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize] as u8 != (opcode & 0x00FF) as u8{
+                    self.cpu.reg_pc += 4;
+                }else{
+                    self.cpu.reg_pc += 2;
+                }
+            }
             0x5000 => {
                 if self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize] == self.cpu.reg_gpr[((opcode & 0x00F0) >> 4) as usize] {
                     self.cpu.reg_pc += 4;
@@ -121,13 +137,83 @@ impl Chip{
                         self.cpu.reg_gpr[((opcode & 0x0F00) >> 8 ) as usize] = self.cpu.reg_gpr[((opcode & 0x00F0)>>4) as usize];
                         self.cpu.reg_pc += 2;
                     },
+                    0x0001 => {
+                        self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize] |= self.cpu.reg_gpr[((opcode & 0x00F0) >> 4) as usize];
+                        self.cpu.reg_pc += 2;
+                    },
+                    0x0002 => {
+                        self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize] &= self.cpu.reg_gpr[((opcode & 0x00F0) >> 4) as usize];
+                        self.cpu.reg_pc += 2;
+                    },
+                    0x0003 => {
+                        self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize] ^= self.cpu.reg_gpr[((opcode & 0x00F0) >> 4) as usize];
+                        self.cpu.reg_pc += 2;
+                    },
+                    0x0004 => {
+                        let r = self.cpu.reg_gpr[((opcode & 0x00F0) >> 4) as usize] as u16 + self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize] as u16;
+                        if r > 255 { 
+                            self.cpu.reg_gpr[15] = 1;
+                        }else{
+                            self.cpu.reg_gpr[15] = 0;
+                        }
+                        self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize] = r as u8;
+                        self.cpu.reg_pc += 2;
+                    },
+                    0x0005 => {
+                        self.cpu.reg_gpr[15] = if self.cpu.reg_gpr[((opcode & 0x00F0) >> 4) as usize] > self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize]{
+                            0
+                        }
+                        else{
+                            1
+                        };
+                        self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize] = self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize].wrapping_sub(self.cpu.reg_gpr[((opcode & 0x00F0) >> 4) as usize]);
+                        self.cpu.reg_pc += 2;
+                    },
+                    0x0006 => {
+                        self.cpu.reg_gpr[15] = self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize] & 0x1;
+                        self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize] = self.cpu.reg_gpr[ ((opcode & 0x00F0) >> 4) as usize] << 1;
+                        self.cpu.reg_pc += 2;
+                    },
+                    0x0007 => {
+                        self.cpu.reg_gpr[15] = if self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize] > self.cpu.reg_gpr[((opcode & 0x00F0) >> 4) as usize]{
+                            0
+                        }
+                        else{
+                            1
+                        };
+                        self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize] = self.cpu.reg_gpr[((opcode & 0x00F0) >> 4) as usize].wrapping_sub(self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize]);
+                        self.cpu.reg_pc += 2;
+                    },
+                    0x000E => {
+                        self.cpu.reg_gpr[15] =  self.cpu.reg_gpr[((opcode & 0x00F0) >> 4) as usize] >> 7;
+                        self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize] = self.cpu.reg_gpr[ ((opcode & 0x00F0) >> 4) as usize ] >> 1 ;
+                        self.cpu.reg_pc += 2;
+                    },
                      _ => {panic!("invalid instructiion in 0x8000- {}", opcode);} 
                 }
+            },
+            0x9000 => {
+                if self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize] != self.cpu.reg_gpr[((opcode & 0x00F0) >> 4) as usize]{
+                    self.cpu.reg_pc += 4;
+                }
+                else{
+                    self.cpu.reg_pc += 2;
+                } 
             },
             0xA000 => {
                 self.cpu.reg_I = opcode & 0x0FFF;
                 self.cpu.reg_pc += 2;
             },
+            0xB000 => {
+                self.cpu.reg_pc = self.cpu.reg_gpr[0] as usize + (opcode & 0x0FFF) as usize;
+            },
+            0xC000 => {
+                let r = random::<u8>() & (opcode & 0x00FF) as u8;
+                //println!("generation rand - {}", r);
+
+                self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize] = r;
+                self.cpu.reg_pc += 2;
+            }
             0xD000 => {
                 let x = self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize] as u32;
                 let y = self.cpu.reg_gpr[((opcode & 0x00F0) >> 4) as usize] as u32;
@@ -156,6 +242,14 @@ impl Chip{
             },
             0xE000 => {
                 match opcode & 0x00FF {
+                    0x009E => {
+                        if self.cpu.keys[self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize] as usize] != 0{
+                            self.cpu.reg_pc += 4;
+                        }
+                        else{
+                            self.cpu.reg_pc += 2;
+                        }
+                    },
                     0x00A1 => {
                        if self.cpu.keys[self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize] as usize] == 0 {
                            self.cpu.reg_pc += 4;
@@ -172,12 +266,48 @@ impl Chip{
                         self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize] = self.cpu.reg_dt; 
                         self.cpu.reg_pc += 2; 
                     },
+                    0x000A => {
+                        let mut key_pressed = false;
+                        for i in (0..16 as usize){
+                            if self.cpu.keys[i] != 0{
+                                self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize] = i as u8;
+                                key_pressed = true;
+                            }
+                        }
+                        if key_pressed{
+                            self.cpu.reg_pc += 2;
+                        }
+                    },
                     0x0015 => {
                         self.cpu.reg_dt = self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize];
                         self.cpu.reg_pc += 2;
                     },
+                    0x0018 => {
+                        self.cpu.reg_st = self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize];
+                        self.cpu.reg_pc += 2;
+                    },
                     0x001E => {
                         self.cpu.reg_I += self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize] as u16;
+                        self.cpu.reg_pc += 2;
+                    },
+                    0x0029 => {
+                        self.cpu.reg_I = self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize] as u16 * 5;
+                        self.cpu.reg_pc += 2;
+                    },
+                    0x0033 => {
+                        let mut v = self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize];
+                        self.memory[self.cpu.reg_I as usize] = v % 10;
+                        v = v / 10;
+                        self.memory[(self.cpu.reg_I + 1) as usize] = v % 10;
+                        v = v / 10;
+                        self.memory[(self.cpu.reg_I + 2) as usize] = v % 10;
+                        self.cpu.reg_pc += 2;
+                    },
+                    0x0055 => {
+                        for i in (0..((opcode & 0x0F00) >> 8) + 1){
+                            self.memory[(self.cpu.reg_I + i) as usize] = self.cpu.reg_gpr[i as usize];
+                        }
+                        self.cpu.reg_I += ((opcode & 0x0F00) >> 8) + 1;
                         self.cpu.reg_pc += 2;
                     },
                     0x0065 => {
