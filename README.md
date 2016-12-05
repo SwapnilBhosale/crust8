@@ -8,6 +8,8 @@ command line : C:\Users\gs-0913\Documents\Rust_Repo\crust8>cargo run -- C:\Users
 ###### command line argument is Path to ROM File
 
 
-Inline-style: 
+
+## Screenshot : 
+
 ![Missile Rom](https://github.com/SwapnilBhosale/crust8/blob/master/image/Capture.JPG "Sample Game Snapshot")
 
