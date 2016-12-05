@@ -128,7 +128,7 @@ impl Chip{
                 self.cpu.reg_pc += 2;
             },
             0x7000 => {
-                self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize] += (opcode & 0x00FF) as u8;
+                self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize] = self.cpu.reg_gpr[((opcode & 0x0F00) >> 8) as usize].wrapping_add((opcode & 0x00FF) as u8);
                 self.cpu.reg_pc += 2;
             },
             0x8000 => {
