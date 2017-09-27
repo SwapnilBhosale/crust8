@@ -26,21 +26,8 @@ impl App {
         const RED:   [f32; 4] = [1.0, 0.0, 0.0, 1.0];
 
         let mut is_draw_needed = self.chip.execute();
+        let chip = &self.chip;
         let mut tempData = [[0;32];64];
-        for y in (0..32){
-            ////println!("y - {}", y);
-            for x in (0..64){
-                ////println!("x - {}", x);
-                tempData[x][y] = if self.chip.gfx[((y*64) + x) as usize] == 0{
-                    0 
-                }
-                else{
-                    1 
-                };
-            }
-        }
-
-
         self.gl.draw(args.viewport(), |c, gl| {
             // Clear the screen.
             //use is_draw_required here
@@ -50,26 +37,24 @@ impl App {
             if is_draw_needed {
                 clear([0.0; 4], gl);
                 for y in (0..32){
-                    ////println!("y - {}", y);
                     for x in (0..64){
-                        ////println!("x - {}", x);
-                        if tempData[x][y] == 0 {
+                        if chip.gfx[((y*64) + x) as usize] == 0 {
 
-         rectangle(GREEN,
-                  [x as f64 * 10.0 + 0.0 as f64, y as f64 * 10.0 + 0.0 as f64, 
-                  x as f64 * 10.0 + 10.0 as f64, y as f64 * 10.0 + 10.0 as f64],
-                  c.transform, gl);
+                            rectangle(GREEN,
+                                      [x as f64 * 10.0 + 0.0 as f64, y as f64 * 10.0 + 0.0 as f64, 
+                                      x as f64 * 10.0 + 10.0 as f64, y as f64 * 10.0 + 10.0 as f64],
+                                      c.transform, gl);
                         }else{
-rectangle(RED,
-                  [x as f64 * 10.0 + 0.0 as f64, y as f64 * 10.0 + 0.0 as f64, 
-                  x as f64 * 10.0 + 10.0 as f64, y as f64 * 10.0 + 10.0 as f64],
-                  c.transform, gl);
+                            rectangle(RED,
+                                      [x as f64 * 10.0 + 0.0 as f64, y as f64 * 10.0 + 0.0 as f64, 
+                                      x as f64 * 10.0 + 10.0 as f64, y as f64 * 10.0 + 10.0 as f64],
+                                      c.transform, gl);
 
                         }
-        //break;
+                        //break;
                     }
                 }
-                                is_draw_needed = false;
+                is_draw_needed = false;
             }            //clear(GREEN, gl);
         });
     }
@@ -119,7 +104,7 @@ rectangle(RED,
                         &Key::D2 => self.chip.cpu.keys[0x2] = 1 as u8,
                         &Key::D3 => self.chip.cpu.keys[0x3] = 1 as u8,
                         &Key::D4 => self.chip.cpu.keys[0xC] = 1 as u8,
-                        &Key::Q => self.chip.cpu.keys[0x4] = 1 as u8,
+                        &Key::Q => {self.chip.cpu.keys[0x4] = 1 as u8;println!("********* pressed Q");},
                         &Key::W => {self.chip.cpu.keys[0x5] = 1 as u8;println!("************* Pressed W");},
                         &Key::E => self.chip.cpu.keys[0x6] = 1 as u8,
                         &Key::R => self.chip.cpu.keys[0xD] = 1 as u8,

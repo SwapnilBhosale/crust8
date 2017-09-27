@@ -70,9 +70,9 @@ impl Chip{
     pub fn execute(&mut self) -> bool {
         let mut is_draw_needed = false;
         let mut opcode = 0;
-        println!(" {:x} {:x} {:x}",self.cpu.reg_pc,self.memory[self.cpu.reg_pc],self.memory[self.cpu.reg_pc + 1]);
+        //println!(" {:x} {:x} {:x}",self.cpu.reg_pc,self.memory[self.cpu.reg_pc],self.memory[self.cpu.reg_pc + 1]);
         opcode = ((self.memory[self.cpu.reg_pc] as u16) << 8) | self.memory[self.cpu.reg_pc + 1] as u16;
-        println!("Opcode : {:x}",opcode);
+        //println!("Opcode : {:x}",opcode);
         match opcode & 0xF000 {
             0x0000 => {
                 match opcode & 0x000F {
@@ -92,7 +92,7 @@ impl Chip{
                 }
             }
             0x1000 => {
-                println!("jumping to address {:x}", opcode & 0x0FFF);
+                //println!("jumping to address {:x}", opcode & 0x0FFF);
                 self.cpu.reg_pc = (opcode & 0x0FFF) as usize;
             }, 
             0x2000 => {
