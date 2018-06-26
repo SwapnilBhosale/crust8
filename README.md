@@ -11,5 +11,5 @@ command line : C:\Users\gs-0913\Documents\Rust_Repo\crust8>cargo run -- C:\Users
 
 ## Screenshot : 
 
-![Missile Rom](https://github.com/SwapnilBhosale/crust8/blob/master/image/Capture.JPG "Sample Game Snapshot")
+![Space Invaders Rom](https://github.com/SwapnilBhosale/crust8/blob/master/image/Capture.JPG "Sample Game Snapshot")
 
